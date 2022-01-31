@@ -1,0 +1,5 @@
+# PingFederate role attribute #
+#this.get("role").toString().replace("[","").replace("]","").replace("\"","")
+
+#OAuth IdP 
+#this.get("idp.role").toString().replace("[","").replace("]","").replace("\"","")
