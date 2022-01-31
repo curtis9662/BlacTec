@@ -1,5 +1,6 @@
 # deactivate MacOs Autoupdates
 softwareupdate --schedule off
+sleep 10s
 softwareupdate -l
 sleep 30s
-softwareupdate -v -i
+softwareupdate -i
