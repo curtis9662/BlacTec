@@ -1,0 +1,8 @@
+$ipaddress = IP_Address_Server 
+$port = port 
+$connection = New-Object System.Net.Sockets.TcpClient($ipaddress, $port)
+if ($connection.Connected) {
+     Write-Host "Success" 
+} else { 
+     Write-Host "Failed" 
+}
