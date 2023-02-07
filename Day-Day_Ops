@@ -1,0 +1,228 @@
+All-Code:  
+
+import tweepy 
+
+  
+
+# Set up your Twitter API credentials 
+
+consumer_key = "YOUR_CONSUMER_KEY" 
+
+consumer_secret = "YOUR_CONSUMER_SECRET" 
+
+access_token = "YOUR_ACCESS_TOKEN" 
+
+access_token_secret = "YOUR_ACCESS_TOKEN_SECRET" 
+
+  
+
+# Authenticate with Twitter API 
+
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret) 
+
+auth.set_access_token(access_token, access_token_secret) 
+
+api = tweepy.API(auth) 
+
+  
+
+# Post a tweet 
+
+api.update_status("Hello, Twitter! This is an auto-generated tweet from my account.") 
+
+ 
+
+# Reset Remote Desktop settings to default 
+
+Remove-Item -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Recurse -Force 
+
+New-Item -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Force 
+
+New-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0 -PropertyType DWORD -Force 
+
+_____ 
+
+ 
+
+# Define the ports to keep open 
+$allowed_ports = "443"# Get a list of all currently open ports 
+$current_ports = (netstat -an | find "LISTENING").Split(" ") | Where-Object {$_ -match "^\d+"}# Iterate through each open port 
+foreach ($port in $current_ports) { 
+    # Check if the port is not in the allowed list 
+    if ($allowed_ports -notcontains $port) { 
+        # Close the port using the Windows Firewall 
+        netsh advfirewall firewall delete rule name="Close $port" protocol=TCP localport=$port 
+        Write-Host "Closed port $port" 
+    } 
+}####### Get all network adapters 
+$networkAdapters = Get-NetAdapter# Loop through each adapter and reset it 
+foreach ($adapter in $networkAdapters) { 
+    Disable-NetAdapter -Name $adapter.Name 
+    Enable-NetAdapter -Name $adapter.Name 
+    Write-Host "Successfully reset network adapter: $($adapter.Name)" 
+}######## Stop the Windows Update service Endpoint 
+Stop-Service -Name wuauserv# Clear the Windows Update cache 
+Remove-Item -Path C:\Windows\SoftwareDistribution\* -Recurse -Force# Start the Windows Update service 
+Start-Service -Name wuauserv# Check for updates 
+Start-Service -Name wuauserv 
+Invoke-Command -ScriptBlock {wuauclt.exe /updatenow} 
+
+#### 
+# Stop the Windows Update service For Srvr 
+Stop-Service -Name wuauserv# Delete the contents of the Windows Update cache 
+Remove-Item -Path C:\Windows\SoftwareDistribution\* -Recurse –Force 
+
+# Start the Windows Update service 
+Start-Service -Name wuauserv# Check for updates 
+wuauclt /detectnow 
+###### 
+#List all Domain Admins in Alpha order 
+
+# Import the Active Directory module 
+Import-Module ActiveDirectory 
+
+#Get all users that have the domain administrator role 
+$domainAdmins = Get-ADGroupMember -Identity "Domain Admins" -Recursive | Get-ADUser -Properties DisplayName 
+# Sort the users by DisplayName and output the results 
+$domainAdmins | Sort-Object DisplayName | Format-Table DisplayName 
+
+ 
+
+ 
+
+# Set the update session 
+
+$session = New-Object -ComObject Microsoft.Update.Session 
+
+  
+
+# Search for updates 
+
+$searcher = $session.CreateUpdateSearcher() 
+
+$searchResult = $searcher.Search("IsInstalled=0 and Type='Software'") 
+
+  
+
+# Download and install the updates 
+
+$downloader = $session.CreateUpdateDownloader() 
+
+$downloader.Updates = $searchResult.Updates 
+
+$downloader.Download() 
+
+  
+
+# Install the updates 
+
+$installer = $session.CreateUpdateInstaller() 
+
+$installer.Updates = $searchResult.Updates 
+
+  
+
+# Show the progress of the update 
+
+$installer.BeginInstall($update, [Microsoft.Update.UpdateInstaller]::Force) 
+
+  
+
+while ($installer.IsBusy) { 
+
+    $progress = $installer.GetProgress() 
+
+    Write-Progress -Activity "Installing Updates" -Status "$progress" 
+
+    Start-Sleep -Seconds 10 
+
+} 
+
+ 
+
+_____________________________ 
+
+$rootStore = New-Object System.Security.Cryptography.X509Certificates.X509Store("Root", "LocalMachine") $rootStore.Open("ReadOnly") $issuer = "entrust" $found = $false foreach ($certificate in $rootStore.Certificates) { if ($certificate.Issuer -like "*$issuer*") { $found = $true Write-Output "Certificate with issuer '$issuer' found: $($certificate.Subject)" } } if (!$found) { Write-Output "No certificate with issuer '$issuer' was found in the Trust Chain." } $rootStore.Close() 
+
+ 
+
+$Certs = Get-ChildItem -Path Cert:\LocalMachine\Root | Where-Object {$_.Issuer -like "*entrust*"} 
+
+if ($Certs -eq $null) { 
+
+Write-Host "No Entrust certificates found in the trusted root certificate store." 
+
+} else { 
+
+Write-Host "Entrust certificates found in the trusted root certificate store:" 
+
+foreach ($Cert in $Certs) { 
+
+Write-Host $Cert.Subject 
+
+} 
+
+} 
+
+ 
+
+_____________________________ 
+
+$url = "https://dl.google.com/chrome/install/latest/chrome_installer.exe" 
+
+$output = "$env:TEMP\chrome_installer.exe" 
+
+  
+
+Invoke-WebRequest -Uri $url -OutFile $output 
+
+Start-Process -FilePath $output -ArgumentList "/silent /install" -Wait 
+
+Remove-Item $output –Force 
+
+ 
+
+______________________________ 
+
+# Enable Airplane mode 
+
+Add-Type -AssemblyName System.ServiceProcess 
+
+$airplaneMode = New-Object System.ServiceProcess.ServiceController('NlaSvc') 
+
+$airplaneMode.Stop() 
+
+  
+
+# Disable all network interfaces 
+
+Get-NetAdapter | Disable-NetAdapter 
+
+  
+
+# Wait for 30 minutes 
+
+Start-Sleep -Seconds 1800 
+
+  
+
+# Re-enable all network interfaces 
+
+Get-NetAdapter | Enable-NetAdapter 
+
+  
+
+# Disable Airplane mode 
+
+$airplaneMode.Start() 
+
+ 
+
+ 
+
+ 
+
+ 
+ 
+
+ 
