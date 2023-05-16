@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# Disable energy-saving features for network interfaces
+sudo networksetup -setpowersave Wi-Fi off
+sudo networksetup -setpowersave Ethernet off
+
+# Disable TCP delay for better throughput
+sudo sysctl -w net.inet.tcp.delayed_ack=0
+
+# Increase the maximum number of open files
+sudo sysctl -w kern.maxfiles=10485760
+sudo sysctl -w kern.maxfilesperproc=1048576
+
+# Set the network interface MTU to the maximum value (e.g., 9000 for jumbo frames)
+# Replace en0 with the appropriate interface identifier if necessary
+sudo ifconfig en0 mtu 9000
+
+# Disable TCP SACK (Selective Acknowledgment)
+sudo sysctl -w net.inet.tcp.sack=0
+
+# Define the URL to open
+url="https://blactec.biz"
+
+# Create an AppleScript command to open the URL in Safari and set it as a startup tab
+osascript -e "tell application \"Safari\" to make new document with properties {URL:\"$url\"}" -e "tell application \"Safari\" to set current tab of front window to tab 1"
+
+echo "URL opened in Safari and set as startup tab."
+
+# Disable TCP ECN (Explicit Congestion Notification)
+sudo sysctl -w net.inet.tcp.ecn.enable=0
+
+# Enable TCP buffer auto-tuning
+sudo sysctl -w net.inet.tcp.recvspace=262144
+sudo sysctl -w net.inet.tcp.sendspace=262144
+sudo sysctl -w net.inet.tcp.mssdflt=1448
+sudo sysctl -w net.inet.tcp.minmss=1448
+sudo sysctl -w net.inet.tcp.maxseg_unacked=8
+sudo sysctl -w net.inet.tcp.rfc1323=1
+sudo sysctl -w net.inet.tcp.rfc3390=1
+sudo sysctl -w net.inet.tcp.slowstart_flightsize=10
+
+# Disable IPv6 (optional if not needed)
+sudo networksetup -setv6off Wi-Fi
+sudo networksetup -setv6off Ethernet
+
+# Save the changes to make them permanent
+sudo sysctl -w net.inet.tcp.delayed_ack=0
+sudo sysctl -w kern.maxfiles=10485760
+sudo sysctl -w kern.maxfilesperproc=1048576
+sudo sysctl -w net.inet.tcp.sack=0
+sudo sysctl -w net.inet.tcp.ecn.enable=0
+sudo sysctl -w net.inet.tcp.recvspace=262144
+sudo sysctl -w net.inet.tcp.sendspace=262144
+sudo sysctl -w net.inet.tcp.mssdflt=1448
+sudo sysctl -w net.inet.tcp.minmss=1448
+sudo sysctl -w net.inet.tcp.maxseg_unacked=8
+sudo sysctl -w net.inet.tcp.rfc1323=1
+sudo sysctl -w net.inet.tcp.rfc3390=1
+sudo sysctl -w net.inet.tcp.slowstart_flightsize=10
+
+echo "Network optimization completed."
