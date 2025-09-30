@@ -1,0 +1,82 @@
+Write-Host "`n============================================" -ForegroundColor Cyan
+Write-Host "Away we GO 🚀" -ForegroundColor Cyan
+Write-Host "============================================`n" -ForegroundColor Cyan
+Start-Sleep 3
+Test-Connection -ComputerName registry.npmjs.org -Count 1
+
+nslookup registry.npmjs.org
+Resolve-DnsName registry.npmjs.org -Type A | Select-Object -ExpandProperty IPAddress
+Resolve-DnsName registry.npmjs.org
+
+# ============================================
+# COMPLETE SCRIPT FOR ALL DOMAINS
+# ============================================
+Start-Sleep 3
+Start-Process https://Blactec.biz
+$domains = @(
+    "npmjs.com",
+    "registry.npmjs.org",
+    "node.bitsrc.io",
+    "node-registry.bit.cloud",
+    "evinced.jfrog.io",
+    "registry.nes.herodevs.com",
+    "cdn.jsdelivr.net",
+    "nodejs.org",
+    "opm.openresty.org",
+    "artifacts.werally.in",
+    "packages.simplifier.net",
+    "registry.xlts.dev",
+    "cdn.sheetjs.com",
+    "simplifier.net",
+    "repo.yarnpkg.com",
+    "webhook.site",
+    "registry.yarnpkg.com",
+    "trufflesecurity.com",
+    "unpkg.com",
+    "brew.sh",
+    "macports.org",
+    "yarnpkg.com"
+)
+
+# Function to get IP addresses for a domain
+function Get-DomainIPs {
+    param(
+        [string]$domain
+    )
+    
+    try {
+        # Ping to get one IP
+        $ping = Test-Connection -ComputerName $domain -Count 1 -ErrorAction Stop
+        $pingIP = $ping.IPV4Address.IPAddressToString
+        
+        # Get all A records
+        $dnsRecords = Resolve-DnsName $domain -Type A -ErrorAction Stop
+        $allIPs = $dnsRecords | Where-Object {$_.Type -eq "A"} | Select-Object -ExpandProperty IPAddress
+        
+        [PSCustomObject]@{
+            Domain = $domain
+            PingIP = $pingIP
+            AllIPs = ($allIPs -join ", ")
+            Status = "Success"
+        }
+    }
+    catch {
+        [PSCustomObject]@{
+            Domain = $domain
+            PingIP = "N/A"
+            AllIPs = "N/A"
+            Status = "Failed: $($_.Exception.Message)"
+        }
+    }
+}
+
+Write-Host "`n============================================" -ForegroundColor Cyan
+Write-Host "DNS Lookup Results, Report to Blactec.biz" -ForegroundColor Cyan
+Write-Host "============================================`n" -ForegroundColor Cyan
+
+$results = foreach ($domain in $domains) {
+    Write-Host "Checking $domain..." -ForegroundColor Yellow
+    Get-DomainIPs -domain $domain
+}
+
+$results | Format-Table -AutoSize -Property Domain, PingIP, AllIPs, Status
