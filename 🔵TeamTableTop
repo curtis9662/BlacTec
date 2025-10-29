@@ -1,0 +1,560 @@
+//Raw//
+-
+Blue Team IDS/IPS Tabletop Exercise
+Microsoft Defender for Endpoint & Security.microsoft.com
+Exercise Duration: 2-3 hours
+Participants: Blue Team Engineer, Analyst, Architect
+Objective: Test detection, analysis, and response capabilities using Microsoft security stack
+
+Segment 1: Initial Access - Phishing with Malicious Attachment
+Scenario
+An employee in Finance opens a malicious Excel document received via email. The document contains macros that download a Cobalt Strike beacon.
+Detection Indicators
+
+Email with suspicious attachment detected
+Macro execution on endpoint
+Suspicious PowerShell execution with encoded commands
+Outbound connection to suspicious IP (185.220.101.45)
+Microsoft Defender for Office 365 alert: "Malicious file detected"
+Microsoft Defender for Endpoint alert: "Suspicious behavior by Office application"
+
+Expected Actions
+Analyst:
+
+Review email threat policies in Security.microsoft.com > Email & collaboration
+Investigate the alert in the Alerts queue
+Check Advanced Hunting for similar emails across organization
+Query: EmailEvents | where AttachmentCount > 0 and SenderFromAddress contains "suspicious-domain.com"
+Pivot to affected user's activity timeline
+Document IOCs (file hash, sender email, IP address)
+Escalate to Engineer for containment
+
+Engineer:
+
+Isolate affected device via Security.microsoft.com > Devices
+Initiate automated investigation
+Review live response session logs
+Collect file sample for analysis
+Check for lateral movement attempts
+Run AV scan and remediation actions
+Review firewall logs for C2 communication
+
+Architect:
+
+Review detection coverage gaps
+Assess why macro execution was allowed
+Evaluate Attack Surface Reduction (ASR) rules configuration
+Recommend policy changes: Block Office macros from internet
+Update threat intelligence feeds
+Review Safe Attachments policies
+Plan communication strategy with management
+
+
+Segment 2: Credential Access - LSASS Dumping
+Scenario
+Threat actor attempts to dump LSASS memory using Mimikatz variant to harvest credentials.
+Detection Indicators
+
+Microsoft Defender for Endpoint alert: "Credential dumping activity detected"
+Alert: "Suspicious access to LSASS process"
+Process: rundll32.exe accessing lsass.exe
+File creation: lsass.dmp in temp directory
+Behavioral detection: Memory access pattern consistent with credential theft
+
+Expected Actions
+Analyst:
+
+Review alert details and MITRE ATT&CK mapping (T1003)
+Check device timeline for preceding activities
+Advanced Hunting query for LSASS access:
+
+  DeviceProcessEvents
+  | where ProcessCommandLine contains "lsass"
+  | where InitiatingProcessFileName in ("procdump.exe", "rundll32.exe", "taskmgr.exe")
+
+Identify affected user accounts
+Check if credentials were subsequently used
+Create incident and set severity to High
+
+Engineer:
+
+Immediately isolate affected device
+Force password reset for compromised accounts
+Review Active Directory security logs
+Disable compromised accounts temporarily
+Check for Pass-the-Hash attempts
+Implement Credential Guard if not enabled
+Review privileged access workstation (PAW) compliance
+
+Architect:
+
+Evaluate LSA Protection implementation status
+Review credential protection policies
+Assess need for Windows Defender Credential Guard
+Plan implementation of Protected Users security group
+Recommend moving to passwordless authentication
+Review privileged access strategy
+Update security baseline configurations
+
+
+Segment 3: Discovery - Network Scanning
+Scenario
+Compromised endpoint begins aggressive network reconnaissance using native Windows tools and port scanning.
+Detection Indicators
+
+Multiple failed SMB connection attempts
+Port scanning activity detected across subnet
+Excessive DNS queries
+Alert: "Suspicious network scanning activity"
+Commands: net view, nltest /dclist, ping sweeps
+PowerShell: Test-NetConnection to multiple hosts
+
+Expected Actions
+Analyst:
+
+Correlate scanning activity with previous incidents
+Map network discovery techniques (T1046, T1018)
+Query network connection logs:
+
+  DeviceNetworkEvents
+  | where RemoteIPType == "Private"
+  | summarize ConnectionCount = count() by DeviceId, InitiatingProcessFileName
+  | where ConnectionCount > 100
+
+Identify scope of reconnaissance
+Check for enumeration of domain controllers
+Document targeted subnets and systems
+
+Engineer:
+
+Apply network isolation rules
+Block suspicious outbound connections at firewall
+Review network segmentation effectiveness
+Check intrusion detection system (IDS) logs
+Implement additional monitoring on targeted systems
+Review and update firewall rules
+Enable Enhanced Network Protection
+
+Architect:
+
+Assess network segmentation architecture
+Review zero-trust implementation status
+Evaluate micro-segmentation opportunities
+Plan network access control improvements
+Recommend conditional access policies
+Review lateral movement prevention controls
+Update network security diagram with findings
+
+
+Segment 4: Lateral Movement - PsExec Activity
+Scenario
+Attacker uses PsExec to move laterally to multiple workstations and a file server using compromised admin credentials.
+Detection Indicators
+
+Alert: "Suspicious remote service creation"
+PsExec service (PSEXESVC.exe) installed on multiple devices
+Remote authentication events from single source
+Alert: "Lateral movement using remote services"
+Named pipe creation: \pipe\psexec
+Process creation: commands executed via PsExec
+
+Expected Actions
+Analyst:
+
+Map lateral movement path across network
+Advanced Hunting for PsExec activity:
+
+  DeviceProcessEvents
+  | where FileName =~ "psexec.exe" or ProcessCommandLine contains "psexec"
+  | join kind=inner DeviceLogonEvents on DeviceId
+
+Identify all affected systems
+Document timeline of lateral movement
+Check privileged account usage
+Assess scope and create incident summary
+
+Engineer:
+
+Isolate all affected devices immediately
+Block source account at domain level
+Review authentication logs for all affected systems
+Deploy detection rules for PsExec usage
+Scan affected systems for persistence mechanisms
+Force credential rotation for admin accounts
+Implement just-in-time (JIT) admin access
+
+Architect:
+
+Review admin rights distribution
+Evaluate privileged access management (PAM) solution
+Assess need for tiered administration model
+Plan implementation of Local Administrator Password Solution (LAPS)
+Review remote access policies
+Recommend application allowlisting
+Update lateral movement prevention strategy
+
+
+Segment 5: Persistence - Scheduled Task Creation
+Scenario
+Attacker creates scheduled tasks on multiple compromised systems to maintain persistence and execute malicious payloads.
+Detection Indicators
+
+Alert: "Suspicious scheduled task created"
+Task created via schtasks.exe or PowerShell
+Task runs with SYSTEM privileges
+Unusual trigger: runs every 5 minutes
+Suspicious action: PowerShell script execution
+Task XML references external script location
+
+Expected Actions
+Analyst:
+
+Review scheduled task details and properties
+Query for similar tasks across environment:
+
+  DeviceProcessEvents
+  | where ProcessCommandLine contains "schtasks" and ProcessCommandLine contains "/create"
+  | where AccountName != "SYSTEM"
+
+Analyze referenced scripts/executables
+Check task execution history
+Map to MITRE ATT&CK (T1053.005)
+Document all persistence mechanisms found
+
+Engineer:
+
+Delete malicious scheduled tasks remotely
+Collect task XML for forensic analysis
+Run live response to check for additional tasks
+Review Group Policy Objects (GPOs) for tampering
+Scan for other persistence methods (Registry Run keys, Services)
+Deploy detection rules for suspicious task creation
+Harden scheduled task permissions
+
+Architect:
+
+Review baseline scheduled task inventory
+Implement scheduled task monitoring solution
+Evaluate need for application control policies
+Plan Group Policy hardening initiatives
+Recommend audit policy improvements
+Update security monitoring coverage map
+Document persistence detection strategy
+
+
+Segment 6: Defense Evasion - Defender Tampering
+Scenario
+Threat actor attempts to disable Microsoft Defender Antivirus and tamper with security tools using various techniques.
+Detection Indicators
+
+Alert: "Tampering with security software detected"
+Alert: "Microsoft Defender Antivirus disabled"
+Registry modifications to Defender settings
+Commands: Set-MpPreference -DisableRealtimeMonitoring $true
+Service manipulation attempts
+Defender exclusion paths added
+Tamper Protection triggered
+
+Expected Actions
+Analyst:
+
+Investigate tampering timeline and methods
+Check if tampering was successful
+Advanced Hunting for defense evasion:
+
+  DeviceRegistryEvents
+  | where RegistryKey contains @"SOFTWARE\Microsoft\Windows Defender"
+  | where ActionType == "RegistryValueSet"
+
+Verify Tamper Protection status
+Document evasion techniques used
+Check for gaps in protection
+
+Engineer:
+
+Re-enable Defender protections immediately
+Remove unauthorized exclusions
+Verify cloud-delivered protection is active
+Check Tamper Protection enforcement
+Review and restore security policies
+Deploy remediation scripts via Intune
+Force policy sync on affected devices
+
+Architect:
+
+Review Tamper Protection deployment status
+Assess Security Settings Management coverage
+Evaluate attack surface reduction rules effectiveness
+Plan hardening of security agent deployment
+Recommend conditional access requirements for security state
+Update security baseline enforcement strategy
+Review security operations center (SOC) detection capabilities
+
+
+Segment 7: Collection - Sensitive Data Staging
+Scenario
+Attacker identifies and stages sensitive files (financial records, customer data) in preparation for exfiltration.
+Detection Indicators
+
+Alert: "Sensitive file access anomaly"
+Unusual file access patterns on file server
+Multiple sensitive files copied to staging directory
+Large archive creation (.zip, .7z, .rar)
+Data Loss Prevention (DLP) policy violation
+Keywords detected: "confidential", "SSN", "credit card"
+Abnormal data volume accessed by user
+
+Expected Actions
+Analyst:
+
+Review DLP alerts in Compliance Center
+Investigate user activity timeline
+Query file access patterns:
+
+  DeviceFileEvents
+  | where FolderPath contains "Finance" or FolderPath contains "Confidential"
+  | where ActionType == "FileRenamed" or ActionType == "FileCreated"
+  | summarize FileCount = count() by InitiatingProcessAccountName
+
+Identify sensitive data types accessed
+Document data classification and volume
+Assess potential compliance impact
+
+Engineer:
+
+Block file transfers from affected systems
+Quarantine staging directory
+Review network traffic for exfiltration attempts
+Check cloud storage access logs
+Implement additional DLP controls
+Review removable media policies
+Enable File Activity monitoring
+
+Architect:
+
+Review data classification strategy
+Assess DLP policy coverage and effectiveness
+Evaluate Information Protection deployment
+Plan sensitivity labeling rollout
+Review insider threat detection capabilities
+Recommend data access governance improvements
+Update data protection architecture
+
+
+Segment 8: Command and Control - DNS Tunneling
+Scenario
+Attacker establishes C2 communication using DNS tunneling to bypass traditional network security controls.
+Detection Indicators
+
+Alert: "Suspicious DNS traffic detected"
+Abnormally long DNS queries (>50 characters)
+High volume of DNS requests to single domain
+Unusual DNS query patterns (Base64-encoded subdomains)
+Rare TLD usage (.xyz, .top)
+DNS queries to newly registered domains
+Beaconing behavior detected
+
+Expected Actions
+Analyst:
+
+Analyze DNS query patterns and domains
+Check domain reputation and registration date
+Advanced Hunting for DNS anomalies:
+
+  DeviceNetworkEvents
+  | where RemoteUrl endswith ".xyz" or RemoteUrl endswith ".top"
+  | where RemoteUrl has_any ("base64", "enc", "data")
+  | summarize QueryCount = count() by DeviceId, RemoteUrl
+
+Decode DNS queries for hidden data
+Map C2 infrastructure
+Check for data exfiltration via DNS
+
+Engineer:
+
+Block malicious domains at DNS level
+Implement DNS filtering/sinkholing
+Review firewall logs for additional C2 channels
+Check for encrypted traffic tunneling
+Deploy network-based detection rules
+Force DNS traffic through secure resolvers
+Review proxy logs for anomalies
+
+Architect:
+
+Evaluate DNS security solution implementation
+Review DNS logging and monitoring coverage
+Assess need for DNS firewall/filtering
+Plan implementation of protective DNS
+Review network traffic analysis capabilities
+Recommend SSL/TLS inspection strategy
+Update C2 detection playbooks
+
+
+Segment 9: Exfiltration - Cloud Storage Upload
+Scenario
+Threat actor exfiltrates 15GB of sensitive data to personal OneDrive and Dropbox accounts.
+Detection Indicators
+
+Alert: "Large data upload to cloud service"
+Cloud App Security alert: "Unusual file upload activity"
+Traffic to consumer cloud storage domains
+Alert: "Sensitive data uploaded to unauthorized cloud service"
+User account accessing multiple cloud services
+Large outbound data transfer volume
+DLP policy triggered on cloud uploads
+
+Expected Actions
+Analyst:
+
+Review Cloud App Security logs
+Investigate cloud service usage patterns
+Check data volume and file types uploaded
+Query for cloud storage connections:
+
+  DeviceNetworkEvents
+  | where RemoteUrl contains "dropbox" or RemoteUrl contains "onedrive"
+  | where InitiatingProcessAccountName !endswith "@contoso.com"
+  | summarize DataTransferred = sum(BytesSent) by DeviceId
+
+Document exfiltrated data classification
+Check for compliance violations
+
+Engineer:
+
+Block access to unauthorized cloud services
+Attempt data recovery/deletion via cloud API
+Review and update web proxy rules
+Implement Cloud Access Security Broker (CASB) controls
+Force disconnect of cloud sessions
+Review egress filtering rules
+Enable Defender for Cloud Apps controls
+
+Architect:
+
+Review cloud application governance strategy
+Evaluate CASB solution effectiveness
+Plan enhanced DLP for cloud services
+Recommend OAuth app governance
+Review shadow IT discovery and blocking
+Update acceptable use policies
+Design cloud exfiltration prevention architecture
+
+
+Segment 10: Impact - Ransomware Deployment
+Scenario
+Attacker deploys ransomware across 50+ endpoints. Files are encrypted with .locked extension and ransom note dropped.
+Detection Indicators
+
+Alert: "Ransomware behavior detected"
+Alert: "Suspicious file encryption activity"
+Rapid file modification events (1000+ files/minute)
+File extensions changed to .locked
+Ransom note created: README_DECRYPT.txt
+Shadow copies deleted via vssadmin.exe
+Behavior monitoring: Mass file encryption pattern
+Defender Antivirus detection: "Ransom:Win32/StopCrypt"
+
+Expected Actions
+Analyst:
+
+Declare major incident immediately
+Determine ransomware variant and scope
+Query encryption activity:
+
+  DeviceFileEvents
+  | where ActionType == "FileRenamed"
+  | where FileName endswith ".locked"
+  | summarize EncryptedFiles = count() by DeviceId, InitiatingProcessFileName
+
+Identify patient zero and initial access vector
+Document affected systems and data
+Check for encrypted backups
+Coordinate incident response team
+
+Engineer:
+
+Execute emergency response procedures
+Isolate all affected and at-risk devices
+Shut down network shares if targeted
+Verify backup integrity and availability
+Kill ransomware processes via live response
+Collect ransomware sample for analysis
+Begin containment and recovery operations
+Deploy threat intelligence to block indicators
+Coordinate with network team for segmentation
+
+Architect:
+
+Activate disaster recovery plan
+Assess business continuity impact
+Coordinate with executive leadership
+Evaluate backup and recovery strategy
+Lead technical recovery planning
+Document lessons learned in real-time
+Plan post-incident hardening initiatives
+Review cyber insurance coverage
+Coordinate external support (IR firm, law enforcement)
+Update ransomware defense architecture
+
+
+Post-Exercise Debrief Questions
+For All Participants:
+
+What detection capabilities worked well? What gaps did we identify?
+Were response times adequate? Where did we experience delays?
+What additional tools or access would have helped?
+How effective was our communication and coordination?
+What policies or procedures need updating?
+
+Metrics to Track:
+
+Mean Time to Detect (MTTD) for each segment
+Mean Time to Respond (MTTR) for each segment
+Number of false positives vs true positives
+Coverage of MITRE ATT&CK techniques
+Effectiveness of automated responses
+Quality of documentation and evidence collection
+
+Recommended Follow-Up Actions:
+
+Update detection rules based on exercise findings
+Document new playbooks for identified gaps
+Schedule remediation for architectural recommendations
+Conduct targeted training on weak areas
+Implement quick-win improvements immediately
+Plan long-term strategic improvements
+Schedule follow-up exercise in 90 days
+
+
+Advanced Hunting Reference Queries
+Cross-Segment Threat Hunt
+kusto// Find potential compromise indicators across all devices
+DeviceProcessEvents
+| where Timestamp > ago(30d)
+| where ProcessCommandLine has_any ("mimikatz", "psexec", "lsass", "vssadmin delete")
+| join kind=inner (
+    DeviceNetworkEvents
+    | where RemoteIPType == "Public"
+) on DeviceId
+| project Timestamp, DeviceId, FileName, ProcessCommandLine, RemoteIP, RemoteUrl
+| order by Timestamp desc
+Credential Access Investigation
+kustoDeviceLogonEvents
+| where Timestamp > ago(7d)
+| where LogonType == "Network" or LogonType == "RemoteInteractive"
+| where AccountName !endswith "$"
+| summarize LogonCount = count(), UniqueDevices = dcount(DeviceId) by AccountName
+| where UniqueDevices > 10
+| order by UniqueDevices desc
+Data Exfiltration Hunt
+kustoDeviceNetworkEvents
+| where Timestamp > ago(24h)
+| where RemoteIPType == "Public"
+| summarize TotalBytesSent = sum(BytesSent) by DeviceId, RemoteIP
+| where TotalBytesSent > 1000000000  // 1GB threshold
+| order by TotalBytesSent desc
+
+Exercise Version: 1.0 | CURTIS
+Last Updated: October 2025
+Next Review: January 2026
